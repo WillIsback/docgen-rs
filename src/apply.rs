@@ -5,10 +5,12 @@ use std::path::Path;
 pub fn apply_with_git(patches: Vec<PatchResult>, repo_path: &Path) -> Result<(), git2::Error> {
     let repo = Repository::discover(repo_path)?;
     let head = repo.head()?;
-    let original_branch = head.shorthand().unwrap_or("").to_string();
-    if original_branch.is_empty() {
+    if !head.is_branch() {
         return Err(git2::Error::from_str("docgen requires a named branch (HEAD is detached)"));
     }
+    let original_branch = head.shorthand()
+        .ok_or_else(|| git2::Error::from_str("HEAD branch name is not valid UTF-8"))?
+        .to_string();
     let branch_name = format!("docgen/{}", chrono::Local::now().format("%Y%m%d-%H%M%S"));
     let head_commit = head.peel_to_commit()?;
     repo.branch(&branch_name, &head_commit, false)?;
@@ -19,7 +21,8 @@ pub fn apply_with_git(patches: Vec<PatchResult>, repo_path: &Path) -> Result<(),
     for patch in &patches {
         std::fs::write(&patch.path, &patch.content)
             .map_err(|e| git2::Error::from_str(&e.to_string()))?;
-        let workdir = repo.workdir().unwrap_or(Path::new("."));
+        let workdir = repo.workdir()
+            .ok_or_else(|| git2::Error::from_str("cannot apply patches to a bare repository"))?;
         let abs = patch.path.canonicalize().map_err(|e| git2::Error::from_str(&e.to_string()))?;
         let rel = abs.strip_prefix(workdir).map_err(|_| git2::Error::from_str("patch path outside repo workdir"))?;
         index.add_path(rel)?;
@@ -36,14 +39,18 @@ pub fn apply_with_git(patches: Vec<PatchResult>, repo_path: &Path) -> Result<(),
     let original_commit = repo.find_branch(&original_branch, git2::BranchType::Local)?.get().peel_to_commit()?;
     let ancestor = repo.find_commit(repo.merge_base(original_commit.id(), feature_commit.id())?)?;
     let mut merge_index = repo.merge_trees(&ancestor.tree()?, &original_commit.tree()?, &feature_commit.tree()?, None)?;
-    if merge_index.has_conflicts() {
-        return Err(git2::Error::from_str("merge conflict — manual resolution required"));
-    }
-    let merge_tree = repo.find_tree(merge_index.write_tree_to(&repo)?)?;
-    repo.commit(Some("HEAD"), &sig, &sig, &format!("docs: merge {branch_name}"), &merge_tree, &[&original_commit, &feature_commit])?;
-    repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
+
+    let merge_result = if merge_index.has_conflicts() {
+        Err(git2::Error::from_str("merge conflict — manual resolution required"))
+    } else {
+        let merge_tree = repo.find_tree(merge_index.write_tree_to(&repo)?)?;
+        repo.commit(Some("HEAD"), &sig, &sig, &format!("docs: merge {branch_name}"), &merge_tree, &[&original_commit, &feature_commit])?;
+        repo.checkout_head(Some(git2::build::CheckoutBuilder::default().force()))?;
+        Ok(())
+    };
+
     repo.find_branch(&branch_name, git2::BranchType::Local)?.delete()?;
-    Ok(())
+    merge_result
 }
 
 #[cfg(test)]
