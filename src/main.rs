@@ -1,8 +1,10 @@
+mod cli;
 mod config;
-mod error;
-mod llm;
-mod git;
 mod detect;
+mod error;
+mod git;
+mod llm;
+mod process;
 mod resolver;
 
 fn main() {}
