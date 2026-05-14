@@ -1,0 +1,13 @@
+[docgen]
+# vLLM endpoint — env var VLLM_BASE_URL overrides this
+endpoint = "http://localhost:30000/v1"
+
+# Docstring style: google | numpy | epytext
+style = "google"
+
+# Pin a specific model (omit to auto-detect from server)
+# model = "mistral-7b-instruct"
+
+[docgen.targets]
+languages = ["python", "typescript"]
+exclude = ["tests/", "node_modules/", ".venv/"]
