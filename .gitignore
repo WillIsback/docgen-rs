@@ -31,3 +31,6 @@ target
 # Tooling
 .claude/
 .claude-flow/
+
+# Git worktrees
+.worktrees/
