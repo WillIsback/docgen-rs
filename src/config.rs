@@ -26,6 +26,7 @@ struct TargetsSection {
     exclude: Vec<String>,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for DocgenToml {
     fn default() -> Self { Self { docgen: DocgenSection::default() } }
 }
@@ -59,6 +60,7 @@ pub struct Config {
     pub batch_size: usize,
     pub connect_timeout_secs: u64,
     pub vllm_timeout_secs: u64,
+    #[allow(dead_code)]
     pub style: String,
     pub model_override: Option<String>,
     pub exclude: Vec<String>,
