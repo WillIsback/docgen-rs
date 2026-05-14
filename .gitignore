@@ -24,3 +24,10 @@ target
 # Added by cargo
 
 /target
+
+# Local env
+.env
+
+# Tooling
+.claude/
+.claude-flow/
