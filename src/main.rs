@@ -7,6 +7,7 @@ mod git;
 mod llm;
 mod process;
 mod resolver;
+mod tailwind;
 
 use clap::Parser;
 use cli::Cli;
